@@ -33,11 +33,13 @@
             pointer-events: none;
             text-transform: uppercase;
             z-index: 100;
+            background: rgba(0,0,0,0.5);
+            padding: 5px;
         }
     </style>
 </head>
 <body>
-    <div id="log">Engine Initializing...</div>
+    <div id="log">Loading Engine...</div>
     <div id="ui">
         <button onclick="spawnDie(4)">D4</button>
         <button onclick="spawnDie(6)">D6</button>
@@ -48,27 +50,30 @@
         <button onclick="resetScene()" style="background: #da3633;">CLEAR</button>
     </div>
 
-    <!-- Direct Script Tags (No Import Maps/Modules) -->
+    <!-- Direct Scripts - No integrity for maximum load reliability -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js" type="module"></script>
 
-    <script>
-        // Use standard global variables since we're not in a module
+    <script type="module">
+        // Using cannon-es (modern version) via module to avoid window name collisions
+        import * as CANNON from 'https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js';
+
         let scene, camera, renderer, world;
         const diceList = [];
 
         function init() {
+            const log = document.getElementById('log');
             try {
-                // Physics
+                log.innerText = "Physics Init...";
                 world = new CANNON.World();
                 world.gravity.set(0, -20, 0);
-                world.broadphase = new CANNON.NaiveBroadphase();
                 
-                const floorBody = new CANNON.Body({ mass: 0, shape: new CANNON.Plane() });
+                const floorBody = new CANNON.Body({ mass: 0 });
+                floorBody.addShape(new CANNON.Plane());
                 floorBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
                 world.addBody(floorBody);
 
-                // Scene
+                log.innerText = "Three.js Init...";
                 scene = new THREE.Scene();
                 camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
                 camera.position.set(0, 15, 10);
@@ -80,53 +85,53 @@
                 renderer.shadowMap.enabled = true;
                 document.body.appendChild(renderer.domElement);
 
-                scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-                const light = new THREE.PointLight(0xffffff, 1000);
+                scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+                const light = new THREE.DirectionalLight(0xffffff, 2.0);
                 light.position.set(10, 20, 10);
                 light.castShadow = true;
                 scene.add(light);
 
-                document.getElementById('log').innerText = "Engine Ready. Roll for initiative.";
+                log.innerText = "Ready to roll.";
                 animate();
             } catch (e) {
-                document.getElementById('log').innerText = "Engine Error: " + e.message;
+                console.error(e);
+                log.innerText = "Error: " + e.message;
             }
         }
 
-        function spawnDie(sides) {
+        window.spawnDie = (sides) => {
             const size = 1.5;
-            let geometry, shape;
-
-            // Using Box for physics regardless of sides for maximum stability for now
-            geometry = new THREE.BoxGeometry(size, size, size);
-            shape = new CANNON.Box(new CANNON.Vec3(size/2, size/2, size/2));
+            let geometry = new THREE.BoxGeometry(size, size, size);
+            let shape = new CANNON.Box(new CANNON.Vec3(size/2, size/2, size/2));
 
             const material = new THREE.MeshPhongMaterial({ color: 0x238636 });
             const mesh = new THREE.Mesh(geometry, material);
             mesh.castShadow = true;
+            mesh.receiveShadow = true;
             scene.add(mesh);
 
-            const body = new CANNON.Body({ mass: 1, shape: shape });
-            body.position.set(Math.random() * 4 - 2, 10, Math.random() * 4 - 2);
+            const body = new CANNON.Body({ mass: 1 });
+            body.addShape(shape);
+            body.position.set(Math.random() * 2 - 1, 10, Math.random() * 2 - 1);
             body.angularVelocity.set(Math.random() * 15, Math.random() * 15, Math.random() * 15);
             world.addBody(body);
 
             diceList.push({ mesh, body });
-            document.getElementById('log').innerText = "Rolling D" + sides + "...";
-        }
+            document.getElementById('log').innerText = "Rolled D" + sides;
+        };
 
-        function resetScene() {
+        window.resetScene = () => {
             diceList.forEach(d => {
                 scene.remove(d.mesh);
                 world.remove(d.body);
             });
             diceList.length = 0;
-            document.getElementById('log').innerText = "Table Cleared";
-        }
+            document.getElementById('log').innerText = "Cleared";
+        };
 
         function animate() {
             requestAnimationFrame(animate);
-            world.step(1/60);
+            world.fixedStep();
             diceList.forEach(d => {
                 d.mesh.position.copy(d.body.position);
                 d.mesh.quaternion.copy(d.body.quaternion);
@@ -140,8 +145,7 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // Start once libraries are loaded
-        window.onload = init;
+        init();
     </script>
 </body>
 </html>
