@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dice Roller - Saber Edition</title>
+    <style>
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .dice-container {
+            font-size: 10rem;
+            margin-bottom: 2rem;
+            transition: transform 0.2s;
+        }
+        .rolling {
+            animation: shake 0.1s infinite;
+        }
+        @keyframes shake {
+            0% { transform: rotate(0deg); }
+            25% { transform: rotate(5deg); }
+            50% { transform: rotate(0eg); }
+            75% { transform: rotate(-5deg); }
+            100% { transform: rotate(0deg); }
+        }
+        button {
+            background-color: #238636;
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #2ea043;
+        }
+        .result-text {
+            margin-top: 1rem;
+            font-size: 1.2rem;
+            min-height: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div id="dice" class="dice-container">🎲</div>
+    <div id="result" class="result-text">Ready to roll...</div>
+    <button onclick="rollDice()">ROLL THE DICE</button>
+
+    <script>
+        const diceFaces = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+        function rollDice() {
+            const diceEl = document.getElementById('dice');
+            const resultEl = document.getElementById('result');
+            diceEl.classList.add('rolling');
+            resultEl.innerText = "Rolling...";
+
+            setTimeout(() => {
+                const roll = Math.floor(Math.random() * 6);
+                diceEl.classList.remove('rolling');
+                diceEl.innerText = diceFaces[roll];
+                resultEl.innerText = `You rolled a ${roll + 1}!`;
+            }, 600);
+        }
+    </script>
+</body>
+</html>
