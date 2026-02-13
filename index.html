@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Saber's High-Stakes Roller</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #0d1117; font-family: 'Courier New', Courier, monospace; }
+        body { margin: 0; overflow: hidden; background: #0d1117; font-family: 'Courier New', Courier, monospace; color: #c9d1d9; }
         #ui {
             position: absolute;
             bottom: 20px;
@@ -13,30 +13,31 @@
             display: flex;
             justify-content: center;
             gap: 10px;
-            z-index: 10;
+            z-index: 100;
         }
         button {
             background: #238636;
             color: white;
             border: 2px solid #30363d;
-            padding: 10px 15px;
+            padding: 12px 18px;
             border-radius: 5px;
             cursor: pointer;
             font-weight: bold;
+            font-family: inherit;
         }
         button:hover { background: #2ea043; }
         #log {
             position: absolute;
             top: 20px;
             left: 20px;
-            color: #c9d1d9;
             pointer-events: none;
             text-transform: uppercase;
+            z-index: 100;
         }
     </style>
 </head>
 <body>
-    <div id="log">Click a die to roll</div>
+    <div id="log">Engine Initializing...</div>
     <div id="ui">
         <button onclick="spawnDie(4)">D4</button>
         <button onclick="spawnDie(6)">D6</button>
@@ -47,59 +48,56 @@
         <button onclick="resetScene()" style="background: #da3633;">CLEAR</button>
     </div>
 
-    <!-- Loading Cannon and Three.js via CDN for the "Vibe Coding" approach -->
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-            }
-        }
-    </script>
+    <!-- Direct Script Tags (No Import Maps/Modules) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
 
-    <script type="module">
-        import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-
-        // --- Physics Setup ---
-        const world = new CANNON.World();
-        world.gravity.set(0, -9.82 * 2, 0); // Snappy gravity
-        world.broadphase = new CANNON.NaiveBroadphase();
-        world.solver.iterations = 10;
-
-        // Ground/Walls to contain the dice
-        const floorBody = new CANNON.Body({ mass: 0, shape: new CANNON.Plane() });
-        floorBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
-        world.addBody(floorBody);
-
-        // --- Scene Setup ---
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 15, 10);
-        camera.lookAt(0, 0, 0);
-
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.shadowMap.enabled = true;
-        document.body.appendChild(renderer.domElement);
-
-        // Lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-        scene.add(ambientLight);
-        const pointLight = new THREE.PointLight(0xffffff, 100);
-        pointLight.position.set(5, 10, 5);
-        pointLight.castShadow = true;
-        scene.add(pointLight);
-
+    <script>
+        // Use standard global variables since we're not in a module
+        let scene, camera, renderer, world;
         const diceList = [];
 
+        function init() {
+            try {
+                // Physics
+                world = new CANNON.World();
+                world.gravity.set(0, -20, 0);
+                world.broadphase = new CANNON.NaiveBroadphase();
+                
+                const floorBody = new CANNON.Body({ mass: 0, shape: new CANNON.Plane() });
+                floorBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+                world.addBody(floorBody);
+
+                // Scene
+                scene = new THREE.Scene();
+                camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+                camera.position.set(0, 15, 10);
+                camera.lookAt(0, 0, 0);
+
+                renderer = new THREE.WebGLRenderer({ antialias: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setPixelRatio(window.devicePixelRatio);
+                renderer.shadowMap.enabled = true;
+                document.body.appendChild(renderer.domElement);
+
+                scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+                const light = new THREE.PointLight(0xffffff, 1000);
+                light.position.set(10, 20, 10);
+                light.castShadow = true;
+                scene.add(light);
+
+                document.getElementById('log').innerText = "Engine Ready. Roll for initiative.";
+                animate();
+            } catch (e) {
+                document.getElementById('log').innerText = "Engine Error: " + e.message;
+            }
+        }
+
         function spawnDie(sides) {
-            const size = 1;
+            const size = 1.5;
             let geometry, shape;
 
-            // Simple Box/D6 for now as foundational geometry, we can refine polyhedrons later
-            // but let's get the physics flow working first.
+            // Using Box for physics regardless of sides for maximum stability for now
             geometry = new THREE.BoxGeometry(size, size, size);
             shape = new CANNON.Box(new CANNON.Vec3(size/2, size/2, size/2));
 
@@ -109,23 +107,22 @@
             scene.add(mesh);
 
             const body = new CANNON.Body({ mass: 1, shape: shape });
-            body.position.set(Math.random() * 2 - 1, 10, Math.random() * 2 - 1);
-            body.angularVelocity.set(Math.random() * 10, Math.random() * 10, Math.random() * 10);
+            body.position.set(Math.random() * 4 - 2, 10, Math.random() * 4 - 2);
+            body.angularVelocity.set(Math.random() * 15, Math.random() * 15, Math.random() * 15);
             world.addBody(body);
 
-            diceList.push({ mesh, body, sides });
-            document.getElementById('log').innerText = `Rolling D${sides}...`;
+            diceList.push({ mesh, body });
+            document.getElementById('log').innerText = "Rolling D" + sides + "...";
         }
 
-        window.spawnDie = spawnDie;
-        window.resetScene = () => {
+        function resetScene() {
             diceList.forEach(d => {
                 scene.remove(d.mesh);
                 world.remove(d.body);
             });
             diceList.length = 0;
-            document.getElementById('log').innerText = "CLEARED";
-        };
+            document.getElementById('log').innerText = "Table Cleared";
+        }
 
         function animate() {
             requestAnimationFrame(animate);
@@ -134,15 +131,17 @@
                 d.mesh.position.copy(d.body.position);
                 d.mesh.quaternion.copy(d.body.quaternion);
             });
-            renderer.render(scene, window.innerWidth > 0 ? scene : scene, camera);
+            renderer.render(scene, camera);
         }
-        animate();
 
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
+
+        // Start once libraries are loaded
+        window.onload = init;
     </script>
 </body>
 </html>
